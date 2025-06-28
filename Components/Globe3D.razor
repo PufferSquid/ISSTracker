@@ -1,0 +1,31 @@
+﻿@inject IJSRuntime JSRuntime
+
+<div @ref="canvasContainer" style="width: 800px; height: 600px;"></div>
+
+@code {
+    private ElementReference canvasContainer;
+    private IJSObjectReference? module;
+    private DotNetObjectReference<Globe>? objRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            module = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./js/globe.js");
+            objRef = DotNetObjectReference.Create(this);
+            await module.InvokeVoidAsync("initializeGlobe",
+                canvasContainer, objRef);
+        }
+    }
+
+    public void UpdateISSPosition(double lat, double lon)
+    {
+        module?.InvokeVoidAsync("updateISSPosition", lat, lon);
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+}
