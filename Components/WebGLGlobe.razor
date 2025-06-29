@@ -1,0 +1,78 @@
+﻿@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
+
+<div class="globe-container">
+    <div @ref="globeContainer" class="globe-canvas"></div>
+    <div class="globe-overlay">
+        <div class="coordinates">
+            ISS Position:
+            <br />
+            Latitude: @(issPosition?.Latitude.ToString("0.00") ?? "0.00")°
+            <br />
+            Longitude: @(issPosition?.Longitude.ToString("0.00") ?? "0.00")°
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<ISSPosition> OnPositionUpdated { get; set; }
+
+    private ElementReference globeContainer;
+    private IJSObjectReference? globeModule;
+    private DotNetObjectReference<WebGLGlobe>? dotNetHelper;
+    private ISSPosition? issPosition;
+    private Timer? updateTimer;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            globeModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./js/globe.js");
+            await globeModule.InvokeVoidAsync("initializeGlobe",
+                globeContainer, dotNetHelper);
+
+            // Start position updates
+            updateTimer = new Timer(async _ => await UpdatePosition(),
+                null, 0, 2000); // Update every 2 seconds
+        }
+    }
+
+    private async Task UpdatePosition()
+    {
+        if (OnPositionUpdated.HasDelegate)
+        {
+            await OnPositionUpdated.InvokeAsync(issPosition);
+        }
+    }
+
+    [JSInvokable]
+    public void SetISSPosition(double latitude, double longitude)
+    {
+        issPosition = new ISSPosition
+        {
+            Latitude = latitude,
+            Longitude = longitude,
+            Timestamp = DateTime.UtcNow
+        };
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (updateTimer != null)
+        {
+            await updateTimer.DisposeAsync();
+        }
+
+        if (globeModule != null)
+        {
+            await globeModule.InvokeVoidAsync("disposeGlobe");
+            await globeModule.DisposeAsync();
+        }
+
+        dotNetHelper?.Dispose();
+    }
+}

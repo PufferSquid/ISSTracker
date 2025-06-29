@@ -6,6 +6,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddHttpClient<ISSService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.wheretheiss.at");
+});
+
+builder.Services.AddTransient<TimerService.Services.BlazorTimer>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
