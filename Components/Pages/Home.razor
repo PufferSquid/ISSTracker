@@ -1,7 +1,6 @@
 ﻿@page "/"
 @using System.Diagnostics
 @inject ISSService ISSService
-@implements IDisposable
 
 <PageTitle>ISS Tracker</PageTitle>
 
@@ -16,109 +15,23 @@
 <div>
     Last Updated: @position?.Timestamp.ToString("HH:mm:ss")
 </div>
-<div>
-    Timer: @timer.TotalSeconds seconds
-</div>
-<div>
-    Debug: @debugMessage
-</div>
+
+<button @onclick="GetPosition" class="btn btn-primary">
+    Refresh Position
+</button>
 
 @code {
-    private TimeSpan timer = new TimeSpan();
     private ISSPosition? position;
-    private CancellationTokenSource? _cts;
-    private Task? _updateTask;
-    private string debugMessage = "Initializing...";
-    private bool _isDisposed;
-
 
     protected override async Task OnInitializedAsync()
     {
-        debugMessage = "Starting initialization...";
-        await LoadPosition();
-        debugMessage = "Starting refresh loop...";
-        StartAutoRefresh();
-        debugMessage = "Initialization complete";
+        await GetPosition();
+    }
+
+    private async Task GetPosition()
+    {
+        Debug.WriteLine("Reset pos");
+        position = await ISSService.GetCurrentPosition();
         StateHasChanged();
-    }
-
-    private async Task LoadPosition()
-    {
-        try
-        {
-            debugMessage = "Loading position...";
-            position = await ISSService.GetCurrentPosition();
-            debugMessage = $"Updated: {position.Latitude}, {position.Longitude}";
-            Debug.WriteLine(debugMessage);
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            debugMessage = $"Error: {ex.Message}";
-            Debug.WriteLine(debugMessage);
-        }
-    }
-
-    private void StartAutoRefresh()
-    {
-        _cts = new CancellationTokenSource();
-        debugMessage = "Creating update task...";
-        StateHasChanged();
-
-        // Store the task in a field to prevent garbage collection
-        _updateTask = RunUpdateLoop(_cts.Token);
-    }
-
-    private async Task RunUpdateLoop(CancellationToken token)
-    {
-        try
-        {
-            debugMessage = "Loop started!";
-            Debug.WriteLine(debugMessage);
-            StateHasChanged();
-            await Task.Yield(); // Force yield to ensure message updates
-
-            while (!token.IsCancellationRequested && !_isDisposed)
-            {
-                debugMessage = $"Waiting... ({timer.TotalSeconds}s)";
-                Debug.WriteLine(debugMessage);
-
-                StateHasChanged();
-
-                await Task.Delay(1000);
-
-                debugMessage = $"Updating... ({timer.TotalSeconds}s)";
-                Debug.WriteLine(debugMessage);
-
-                Debug.WriteLine(token.IsCancellationRequested);
-
-
-                await InvokeAsync(async () =>
-                {
-                    timer = timer.Add(TimeSpan.FromSeconds(1));
-                    await LoadPosition();
-                });
-
-                StateHasChanged();
-            }
-        }
-        catch (Exception ex)
-        {
-            debugMessage = $"Loop crashed: {ex.Message}";
-            Debug.WriteLine(debugMessage);
-            StateHasChanged();
-        }
-    }
-
-    public async void Dispose()
-    {
-        _isDisposed = true;
-        Debug.WriteLine("Dispose");
-        _cts?.Cancel();
-        if (_updateTask != null)
-        {
-            await _updateTask; // Wait for clean completion
-        }
-        _cts?.Dispose();
     }
 }
