@@ -5,7 +5,7 @@
 
 <PageTitle>ISS Tracker</PageTitle>
 
-<h1>ISS Current Position</h1>
+<h1>International Space Station Current Position</h1>
 
 <div>
     Latitude: @position?.Latitude.ToString("0.0000")
@@ -16,9 +16,11 @@
 <div>
     Last Updated: @position?.Timestamp.ToString("HH:mm:ss")
 </div>
-<div>
-    Timer: @timer.TotalSeconds seconds
-</div>
+
+<!-- Globe here! -->
+<!--<WebGLGlobe Position="@position" />-->
+
+<br />
 <div>
     Debug: @debugMessage
 </div>
@@ -29,7 +31,6 @@
     private CancellationTokenSource? _cts;
     private Task? _updateTask;
     private string debugMessage = "Initializing...";
-    private bool _isDisposed;
 
 
     protected override async Task OnInitializedAsync()
@@ -78,7 +79,7 @@
             StateHasChanged();
             await Task.Yield(); // Force yield to ensure message updates
 
-            while (!token.IsCancellationRequested && !_isDisposed)
+            while (!token.IsCancellationRequested)
             {
                 debugMessage = $"Waiting... ({timer.TotalSeconds}s)";
                 Debug.WriteLine(debugMessage);
@@ -112,7 +113,6 @@
 
     public async void Dispose()
     {
-        _isDisposed = true;
         Debug.WriteLine("Dispose");
         _cts?.Cancel();
         if (_updateTask != null)
